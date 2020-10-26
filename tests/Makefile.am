@@ -8,10 +8,12 @@ noinst_PROGRAMS = \
 	random-test-client \
 	unit-test-server \
 	unit-test-client \
+	mraa-rtu-test  \
 	version
 
 common_ldflags = \
-	$(top_builddir)/src/libmodbus.la
+	$(top_builddir)/src/libmodbus.la \
+	-lmraa
 
 bandwidth_server_one_SOURCES = bandwidth-server-one.c
 bandwidth_server_one_LDADD = $(common_ldflags)
@@ -34,6 +36,9 @@ unit_test_server_LDADD = $(common_ldflags)
 unit_test_client_SOURCES = unit-test-client.c unit-test.h
 unit_test_client_LDADD = $(common_ldflags)
 
+mraa_rtu_test_SOURCES = mraa-rtu-test.c
+mraa_rtu_test_LDADD = $(common_ldflags)
+
 version_SOURCES = version.c
 version_LDADD = $(common_ldflags)
 
@@ -42,7 +47,8 @@ AM_CPPFLAGS = \
     -DSYSCONFDIR=\""$(sysconfdir)"\" \
     -DLIBEXECDIR=\""$(libexecdir)"\" \
     -I${top_srcdir}/src \
-    -I${top_builddir}/src
+    -I${top_builddir}/src\
+	-I/usr/local/include
 
 AM_CFLAGS = ${my_CFLAGS}
 

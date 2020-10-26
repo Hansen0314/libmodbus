@@ -269,13 +269,14 @@ static void _modbus_rtu_ioctl_rts(modbus_t *ctx, int on)
 
 static ssize_t _modbus_rtu_send(modbus_t *ctx, const uint8_t *req, int req_length)
 {
-#if defined(_WIN32)
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
+#if defined(_WIN32)
     DWORD n_bytes = 0;
     return (WriteFile(ctx_rtu->w_ser.fd, req, req_length, &n_bytes, NULL)) ? (ssize_t)n_bytes : -1;
+#elif HAVE_DECL_MRAA_FIRMATA_RS485
+    return mraa_uart_write(ctx_rtu->uart,(const char*)req,req_length);
 #else
 #if HAVE_DECL_TIOCM_RTS
-    modbus_rtu_t *ctx_rtu = ctx->backend_data;
     if (ctx_rtu->rts != MODBUS_RTU_RTS_NONE) {
         ssize_t size;
 
@@ -305,7 +306,6 @@ static int _modbus_rtu_receive(modbus_t *ctx, uint8_t *req)
 {
     int rc;
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
-
     if (ctx_rtu->confirmation_to_ignore) {
         _modbus_receive_msg(ctx, req, MSG_CONFIRMATION);
         /* Ignore errors and reset the flag */
@@ -328,6 +328,9 @@ static ssize_t _modbus_rtu_recv(modbus_t *ctx, uint8_t *rsp, int rsp_length)
 {
 #if defined(_WIN32)
     return win32_ser_read(&((modbus_rtu_t *)ctx->backend_data)->w_ser, rsp, rsp_length);
+#elif  HAVE_DECL_MRAA_FIRMATA_RS485
+    modbus_rtu_t *ctx_rtu = ctx->backend_data;
+    return mraa_uart_read(ctx_rtu->uart,(char*)rsp,rsp_length);
 #else
     return read(ctx->s, rsp, rsp_length);
 #endif
@@ -396,13 +399,6 @@ static int _modbus_rtu_check_integrity(modbus_t *ctx, uint8_t *msg,
 /* Sets up a serial port for RTU communications */
 static int _modbus_rtu_connect(modbus_t *ctx)
 {
-#if defined(_WIN32)
-    DCB dcb;
-#else
-    struct termios tios;
-    speed_t speed;
-    int flags;
-#endif
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
 
     if (ctx->debug) {
@@ -412,6 +408,7 @@ static int _modbus_rtu_connect(modbus_t *ctx)
     }
 
 #if defined(_WIN32)
+    DCB dcb;
     /* Some references here:
      * http://msdn.microsoft.com/en-us/library/aa450602.aspx
      */
@@ -575,7 +572,22 @@ static int _modbus_rtu_connect(modbus_t *ctx)
         ctx_rtu->w_ser.fd = INVALID_HANDLE_VALUE;
         return -1;
     }
+#elif HAVE_DECL_MRAA_FIRMATA_RS485
+    /* initialize mraa for the platform (not needed most of the times) */
+    mraa_init();
+    // mraa_add_subplatform(MRAA_GENERIC_FIRMATA, "/dev/ttyACM0");  
+    mraa_add_subplatform(MRAA_GENERIC_FIRMATA, ctx_rtu->device);  
+    /* initialize UART */
+    ctx_rtu->uart = mraa_uart_init(UART);    
+    if (ctx_rtu->uart == NULL) {
+        fprintf(stderr, "Failed to initialize firmata UART\n");
+        return -1;
+    }
+    mraa_uart_set_baudrate(ctx_rtu->uart,ctx_rtu->baud);
 #else
+    struct termios tios;
+    speed_t speed;
+    int flags;
     /* The O_NOCTTY flag tells UNIX that this program doesn't want
        to be the "controlling terminal" for that port. If you
        don't specify this then any input (such as keyboard abort
@@ -1128,6 +1140,8 @@ static void _modbus_rtu_close(modbus_t *ctx)
         fprintf(stderr, "ERROR Error while closing handle (LastError %d)\n",
                 (int)GetLastError());
     }
+#elif HAVE_DECL_MRAA_FIRMATA_RS485
+    mraa_uart_stop(ctx_rtu->uart);
 #else
     if (ctx->s != -1) {
         tcsetattr(ctx->s, TCSANOW, &ctx_rtu->old_tios);
@@ -1143,6 +1157,10 @@ static int _modbus_rtu_flush(modbus_t *ctx)
     modbus_rtu_t *ctx_rtu = ctx->backend_data;
     ctx_rtu->w_ser.n_bytes = 0;
     return (PurgeComm(ctx_rtu->w_ser.fd, PURGE_RXCLEAR) == FALSE);
+#elif HAVE_DECL_MRAA_FIRMATA_RS485
+    modbus_rtu_t *ctx_rtu = ctx->backend_data;
+    mraa_uart_flush(ctx_rtu->uart);
+    return 1;
 #else
     return tcflush(ctx->s, TCIOFLUSH);
 #endif
@@ -1163,6 +1181,10 @@ static int _modbus_rtu_select(modbus_t *ctx, fd_set *rset,
     if (s_rc < 0) {
         return -1;
     }
+#elif HAVE_DECL_MRAA_FIRMATA_RS485
+    usleep(250000); //50ms
+    // sleep(0.5);
+    s_rc = 1;
 #else
     while ((s_rc = select(ctx->s+1, rset, NULL, NULL, tv)) == -1) {
         if (errno == EINTR) {

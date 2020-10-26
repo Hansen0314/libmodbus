@@ -87,6 +87,7 @@ AC_CHECK_HEADERS([ \
     sys/ioctl.h \
     sys/params.h \
     sys/socket.h \
+    mraa.h \
     sys/time.h \
     sys/types.h \
     termios.h \
@@ -132,6 +133,7 @@ fi
 
 # Check for RS485 support (Linux kernel version 2.6.28+)
 AC_CHECK_DECLS([TIOCSRS485], [], [], [[#include <sys/ioctl.h>]])
+AC_CHECK_DECLS([MRAA_FIRMATA_RS485], [], [], [[#include <mraa.h>]])
 # Check for RTS flags
 AC_CHECK_DECLS([TIOCM_RTS], [], [], [[#include <sys/ioctl.h>]])
 

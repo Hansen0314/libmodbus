@@ -7,6 +7,11 @@
 #ifndef MODBUS_RTU_PRIVATE_H
 #define MODBUS_RTU_PRIVATE_H
 
+#if HAVE_DECL_MRAA_FIRMATA_RS485
+#include "mraa/uart.h"
+#define UART 512 + 2
+#endif
+
 #ifndef _MSC_VER
 #include <stdint.h>
 #else
@@ -68,6 +73,9 @@ typedef struct _modbus_rtu {
     int rts_delay;
     int onebyte_time;
     void (*set_rts) (modbus_t *ctx, int on);
+#endif
+#if HAVE_DECL_MRAA_FIRMATA_RS485
+    mraa_uart_context uart;
 #endif
     /* To handle many slaves on the same link */
     int confirmation_to_ignore;

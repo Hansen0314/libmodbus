@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     } else if (use_backend == TCP_PI) {
         ctx = modbus_new_tcp_pi("::1", "1502");
     } else {
-        ctx = modbus_new_rtu("/dev/ttyUSB1", 115200, 'N', 8, 1);
+        ctx = modbus_new_rtu("/dev/ttyACM0", 9600, 'N', 8, 1);
     }
     if (ctx == NULL) {
         fprintf(stderr, "Unable to allocate libmodbus context\n");
@@ -122,28 +122,29 @@ int main(int argc, char *argv[])
 
     printf("** UNIT TESTING **\n");
 
-    printf("1/1 No response timeout modification on connect: ");
-    modbus_get_response_timeout(ctx, &new_response_to_sec, &new_response_to_usec);
-    ASSERT_TRUE(old_response_to_sec == new_response_to_sec &&
-                old_response_to_usec == new_response_to_usec, "");
+    // printf("1/1 No response timeout modification on connect: ");
+    // modbus_get_response_timeout(ctx, &new_response_to_sec, &new_response_to_usec);
+    // ASSERT_TRUE(old_response_to_sec == new_response_to_sec &&
+    //             old_response_to_usec == new_response_to_usec, "");
 
-    printf("\nTEST WRITE/READ:\n");
+    // printf("\nTEST WRITE/READ:\n");
 
-    /** COIL BITS **/
+    // /** COIL BITS **/
 
-    /* Single */
-    rc = modbus_write_bit(ctx, UT_BITS_ADDRESS, ON);
-    printf("1/2 modbus_write_bit: ");
-    ASSERT_TRUE(rc == 1, "");
+    // /* Single */
+    // rc = modbus_write_bit(ctx, UT_BITS_ADDRESS, ON);
+    // printf("1/2 modbus_write_bit: ");
+    // ASSERT_TRUE(rc == 1, "");
 
-    rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
-    printf("2/2 modbus_read_bits: ");
-    ASSERT_TRUE(rc == 1, "FAILED (nb points %d)\n", rc);
-    ASSERT_TRUE(tab_rp_bits[0] == ON, "FAILED (%0X != %0X)\n",
-                tab_rp_bits[0], ON);
-
+    // rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
+    // printf("2/2 modbus_read_bits: ");
+    // ASSERT_TRUE(rc == 1, "FAILED (nb points %d)\n", rc);
+    // ASSERT_TRUE(tab_rp_bits[0] == ON, "FAILED (%0X != %0X)\n",
+    //             tab_rp_bits[0], ON);
+    uint16_t fan_reg;
     /* End single */
-
+    modbus_read_registers(ctx,UT_BITS_ADDRESS,UT_BITS_NB,&fan_reg);
+    fprintf(stdout,"fan_reg is %x\r\n",fan_reg);
     /* Multiple bits */
     {
         uint8_t tab_value[UT_BITS_NB];

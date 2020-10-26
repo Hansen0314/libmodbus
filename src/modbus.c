@@ -284,7 +284,7 @@ static uint8_t compute_meta_length_after_function(int function,
             length = 1;
         }
     }
-
+    
     return length;
 }
 
@@ -364,7 +364,7 @@ int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
      * information. */
     step = _STEP_FUNCTION;
     length_to_read = ctx->backend->header_length + 1;
-
+    
     if (msg_type == MSG_INDICATION) {
         /* Wait for a message, we don't know when the message will be
          * received */
@@ -382,7 +382,6 @@ int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
         tv.tv_usec = ctx->response_timeout.tv_usec;
         p_tv = &tv;
     }
-
     while (length_to_read != 0) {
         rc = ctx->backend->select(ctx, &rset, p_tv, length_to_read);
         if (rc == -1) {
@@ -401,7 +400,6 @@ int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
             }
             return -1;
         }
-
         rc = ctx->backend->recv(ctx, msg + msg_length, length_to_read);
         if (rc == 0) {
             errno = ECONNRESET;
@@ -1161,6 +1159,7 @@ static int read_registers(modbus_t *ctx, int function, int addr, int nb,
     req_length = ctx->backend->build_request_basis(ctx, function, addr, nb, req);
 
     rc = send_msg(ctx, req, req_length);
+
     if (rc > 0) {
         int offset;
         int i;
